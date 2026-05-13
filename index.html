@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>技术服务单系统</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#0f1117;--s:#1a1d27;--s2:#222536;--b:#2e3348;--a:#4f7bff;--as:rgba(79,123,255,0.12);--t:#e8eaf0;--tm:#7880a0;--td:#4a5070;--g:#34d399;--gs:rgba(52,211,153,0.1);--y:#fbbf24;--r:#f87171;--r2:10px;--f:'Noto Sans SC',sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--t);font-family:var(--f);min-height:100vh;font-size:14px;line-height:1.6;}
+.app{display:flex;flex-direction:column;min-height:100vh;}
+header{background:var(--s);border-bottom:1px solid var(--b);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;}
+.logo-dot{width:8px;height:8px;background:var(--a);border-radius:50%;box-shadow:0 0 10px var(--a);}
+.eng-badge{background:var(--s2);border:1px solid var(--b);border-radius:20px;padding:4px 14px;font-size:12px;color:var(--tm);}
+.eng-badge span{color:var(--t);font-weight:500;}
+.main{flex:1;display:flex;}
+.sidebar{width:220px;border-right:1px solid var(--b);padding:24px 0;flex-shrink:0;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 24px;color:var(--tm);cursor:pointer;transition:all .15s;font-size:13px;border-left:2px solid transparent;}
+.nav-item:hover{color:var(--t);background:var(--s);}
+.nav-item.active{color:var(--a);background:var(--as);border-left-color:var(--a);}
+.nav-divider{height:1px;background:var(--b);margin:12px 24px;}
+.content{flex:1;padding:32px;overflow-y:auto;}
+.view{display:none;}.view.active{display:block;}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;}
+.page-title{font-size:20px;font-weight:700;}
+.page-title small{display:block;font-size:12px;font-weight:400;color:var(--tm);margin-top:2px;}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 18px;border-radius:var(--r2);font-family:var(--f);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;text-decoration:none;}
+.btn-primary{background:var(--a);color:#fff;}
+.btn-primary:hover{background:#6b8fff;}
+.btn-secondary{background:var(--s2);color:var(--t);border:1px solid var(--b);}
+.btn-secondary:hover{border-color:var(--a);color:var(--a);}
+.btn-sm{padding:5px 12px;font-size:12px;}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;}
+.stat-card{background:var(--s);border:1px solid var(--b);border-radius:var(--r2);padding:20px;}
+.stat-label{font-size:11px;color:var(--tm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+.stat-value{font-size:28px;font-weight:700;font-family:monospace;}
+.stat-value.blue{color:var(--a);}.stat-value.green{color:var(--g);}.stat-value.yellow{color:var(--y);}.stat-value.muted{color:var(--tm);}
+.tbl-wrap{background:var(--s);border:1px solid var(--b);border-radius:var(--r2);overflow:hidden;}
+.tbl-bar{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--b);gap:12px;}
+.search{background:var(--bg);border:1px solid var(--b);border-radius:8px;padding:7px 14px;font-family:var(--f);font-size:13px;color:var(--t);width:240px;outline:none;}
+.search:focus{border-color:var(--a);}
+.search::placeholder{color:var(--td);}
+table{width:100%;border-collapse:collapse;}
+th{padding:10px 16px;text-align:left;font-size:11px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--b);background:var(--s2);}
+td{padding:12px 16px;border-bottom:1px solid var(--b);font-size:13px;vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,.02);}
+.tno{font-family:monospace;font-size:12px;color:var(--a);font-weight:500;}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;}
+.bp{background:rgba(251,191,36,.1);color:var(--y);}.bp::before{background:var(--y);}
+.bs{background:var(--gs);color:var(--g);}.bs::before{background:var(--g);}
+.td-act{display:flex;gap:8px;}
+.empty{text-align:center;padding:60px 20px;color:var(--tm);}
+.empty .ic{font-size:40px;margin-bottom:12px;opacity:.4;}
+.card{background:var(--s);border:1px solid var(--b);border-radius:var(--r2);padding:24px 28px;max-width:720px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.fg{display:flex;flex-direction:column;gap:6px;}
+.fg.full{grid-column:1/-1;}
+label.lbl{font-size:12px;font-weight:500;color:var(--tm);letter-spacing:.03em;}
+input,textarea,select{background:var(--bg);border:1px solid var(--b);border-radius:8px;padding:9px 13px;font-family:var(--f);font-size:13px;color:var(--t);outline:none;transition:border-color .15s;width:100%;}
+input:focus,textarea:focus,select:focus{border-color:var(--a);}
+input::placeholder,textarea::placeholder{color:var(--td);}
+textarea{resize:vertical;min-height:80px;}
+.fsec{margin-bottom:20px;}
+.fsec-title{font-size:11px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--b);}
+.cbg{display:flex;flex-wrap:wrap;gap:8px;}
+.cbi{display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;background:var(--s2);border:1px solid var(--b);border-radius:20px;transition:all .15s;font-size:12px;}
+.cbi:hover{border-color:var(--a);}
+.cbi input{width:auto;margin:0;accent-color:var(--a);}
+.cbi.checked{background:var(--as);border-color:var(--a);color:var(--a);}
+.ro{display:flex;flex-direction:column;gap:6px;}
+.ri{display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;border-radius:8px;transition:background .15s;font-size:13px;}
+.ri:hover{background:var(--s2);}
+.ri input{width:auto;accent-color:var(--a);}
+.set-card{background:var(--s);border:1px solid var(--b);border-radius:var(--r2);padding:24px;margin-bottom:16px;}
+.set-title{font-size:14px;font-weight:600;margin-bottom:16px;}
+.set-note{font-size:12px;color:var(--tm);margin-top:8px;background:var(--s2);padding:10px 14px;border-radius:8px;border-left:2px solid var(--a);}
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .2s;}
+.mo.open{opacity:1;pointer-events:all;}
+.modal{background:var(--s);border:1px solid var(--b);border-radius:14px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;transform:translateY(10px);transition:transform .2s;}
+.mo.open .modal{transform:translateY(0);}
+.mh{display:flex;align-items:center;justify-content:space-between;padding:22px 28px 18px;border-bottom:1px solid var(--b);}
+.mh-title{font-size:16px;font-weight:700;}
+.mc{padding:24px 28px;}
+.mf{padding:16px 28px 22px;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--b);}
+.mc-close{background:none;border:none;color:var(--tm);font-size:20px;cursor:pointer;padding:2px 6px;border-radius:6px;}
+.link-box{background:var(--bg);border:1px solid var(--b);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px;margin-top:8px;}
+.link-url{flex:1;font-family:monospace;font-size:12px;color:var(--a);word-break:break-all;}
+.copy-btn{flex-shrink:0;background:var(--s2);border:1px solid var(--b);border-radius:6px;padding:5px 10px;color:var(--tm);font-size:12px;cursor:pointer;transition:all .15s;}
+.copy-btn:hover{color:var(--t);border-color:var(--a);}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo"><div class="logo-dot"></div>技术服务单系统</div>
+    <div class="eng-badge">工程师：<span id="hdr-name">未设置</span></div>
+  </header>
+  <div class="main">
+    <nav class="sidebar">
+      <div class="nav-item active" id="n1" onclick="nav('dashboard')"><span>◈</span><span>服务单列表</span></div>
+      <div class="nav-item" id="n2" onclick="nav('new-ticket')"><span>＋</span><span>新建服务单</span></div>
+      <div class="nav-divider"></div>
+      <div class="nav-item" id="n3" onclick="nav('settings')"><span>⚙</span><span>系统设置</span></div>
+    </nav>
+    <main class="content">
+
+      <div id="v-dashboard" class="view active">
+        <div class="page-header">
+          <div class="page-title">服务单列表<small>所有历史服务记录</small></div>
+          <button class="btn btn-primary" onclick="nav('new-ticket')">＋ 新建服务单</button>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">全部</div><div class="stat-value blue" id="st-all">—</div></div>
+          <div class="stat-card"><div class="stat-label">等待签名</div><div class="stat-value yellow" id="st-pend">—</div></div>
+          <div class="stat-card"><div class="stat-label">已签名</div><div class="stat-value green" id="st-sign">—</div></div>
+          <div class="stat-card"><div class="stat-label">本月</div><div class="stat-value muted" id="st-mon">—</div></div>
+        </div>
+        <div class="tbl-wrap">
+          <div class="tbl-bar">
+            <input class="search" type="text" placeholder="搜索客户、单号…" oninput="filterTickets(this.value)">
+            <button class="btn btn-secondary btn-sm" onclick="loadTickets()">↻ 刷新</button>
+          </div>
+          <div id="tbl"></div>
+        </div>
+      </div>
+
+      <div id="v-new-ticket" class="view">
+        <div class="page-header">
+          <div class="page-title">新建服务单<small>填写后生成签名链接</small></div>
+          <button class="btn btn-secondary" onclick="nav('dashboard')">← 返回</button>
+        </div>
+        <div class="card">
+          <form id="tform" onsubmit="submitTicket(event)">
+            <div class="fsec">
+              <div class="fsec-title">客户信息</div>
+              <div class="form-grid">
+                <div class="fg"><label class="lbl">客户公司 *</label><input id="f-co" required placeholder="客户公司名称"></div>
+                <div class="fg"><label class="lbl">联系人 *</label><input id="f-ct" required placeholder="客户联系人"></div>
+                <div class="fg"><label class="lbl">客户电话</label><input id="f-cp" placeholder="客户手机/座机"></div>
+                <div class="fg"><label class="lbl">服务日期 *</label><input id="f-dt" type="date" required></div>
+              </div>
+            </div>
+            <div class="fsec">
+              <div class="fsec-title">服务方信息</div>
+              <div class="form-grid">
+                <div class="fg"><label class="lbl">服务方公司</label><input id="f-sc" placeholder="本公司名称"></div>
+                <div class="fg"><label class="lbl">技术工程师</label><input id="f-en" placeholder="工程师姓名"></div>
+                <div class="fg"><label class="lbl">工程师电话</label><input id="f-ep" placeholder="工程师手机"></div>
+              </div>
+            </div>
+            <div class="fsec">
+              <div class="fsec-title">服务内容</div>
+              <div class="form-grid">
+                <div class="fg full"><label class="lbl">服务类型（可多选）</label>
+                  <div class="cbg" id="cbtypes">
+                    <label class="cbi"><input type="checkbox" value="故障排查与修复"> 故障排查与修复</label>
+                    <label class="cbi"><input type="checkbox" value="软件安装/升级"> 软件安装/升级</label>
+                    <label class="cbi"><input type="checkbox" value="远程配置"> 远程配置</label>
+                    <label class="cbi"><input type="checkbox" value="技术咨询"> 技术咨询</label>
+                    <label class="cbi"><input type="checkbox" value="其他"> 其他</label>
+                  </div>
+                  <input id="f-ot" placeholder="其他类型说明…" style="margin-top:8px;display:none;">
+                </div>
+                <div class="fg full"><label class="lbl">问题描述 *</label><textarea id="f-pb" required placeholder="客户反馈的问题或故障现象"></textarea></div>
+                <div class="fg full"><label class="lbl">处理过程</label><textarea id="f-pc" placeholder="关键操作步骤"></textarea></div>
+                <div class="fg full"><label class="lbl">处理结果 *</label>
+                  <div class="ro">
+                    <label class="ri"><input type="radio" name="res" value="已解决，系统/软件恢复正常" required> 已解决，系统/软件恢复正常</label>
+                    <label class="ri"><input type="radio" name="res" value="部分解决，存在遗留问题待后续处理"> 部分解决，存在遗留问题待后续处理</label>
+                    <label class="ri"><input type="radio" name="res" value="未解决"> 未解决</label>
+                  </div>
+                  <input id="f-rn" placeholder="补充说明" style="margin-top:8px;">
+                </div>
+                <div class="fg"><label class="lbl">服务时长</label><input id="f-du" placeholder="例如：1.5小时"></div>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;">生成服务单 & 签名链接 →</button>
+          </form>
+        </div>
+      </div>
+
+      <div id="v-settings" class="view">
+        <div class="page-header"><div class="page-title">系统设置<small>配置数据库和个人信息</small></div></div>
+        <div class="set-card">
+          <div class="set-title">🔗 Supabase 数据库配置</div>
+          <div class="form-grid">
+            <div class="fg full"><label class="lbl">Project URL</label><input id="cfg-url" placeholder="https://xxxx.supabase.co"></div>
+            <div class="fg full"><label class="lbl">Anon Key</label><input id="cfg-key" placeholder="eyJhbGci..."></div>
+          </div>
+          <div class="set-note">在 Supabase 后台 → Settings → API → Legacy anon 标签中找到以上两个值</div>
+        </div>
+        <div class="set-card">
+          <div class="set-title">👤 工程师信息</div>
+          <div class="form-grid">
+            <div class="fg"><label class="lbl">姓名</label><input id="cfg-name" placeholder="您的姓名"></div>
+            <div class="fg"><label class="lbl">电话</label><input id="cfg-phone" placeholder="您的手机"></div>
+            <div class="fg full"><label class="lbl">公司名称</label><input id="cfg-comp" placeholder="您所在公司"></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="savebtn" onclick="saveSettings()">保存配置</button>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<div id="rmodal" class="mo">
+  <div class="modal">
+    <div class="mh"><div class="mh-title">✅ 服务单创建成功</div><button class="mc-close" onclick="closeModal()">✕</button></div>
+    <div class="mc">
+      <p style="color:var(--tm);font-size:13px;margin-bottom:16px;">将下面链接发给客户，客户打开即可签名确认。</p>
+      <label class="lbl">客户签名链接</label>
+      <div class="link-box"><div class="link-url" id="rlink"></div><button class="copy-btn" id="cbtn" onclick="copyLink()">复制</button></div>
+      <div id="rtno" style="margin-top:10px;font-size:12px;color:var(--tm);"></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-secondary" onclick="closeModal();nav('dashboard')">返回列表</button>
+      <button class="btn btn-primary" onclick="copyLink()">复制链接</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var SB_URL = localStorage.getItem('sb_url') || 'https://ttkpvjecqobdqiswptdq.supabase.co';
+var SB_KEY = localStorage.getItem('sb_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0a3B2amVjcW9iZHFpc3dwdGRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODMxNTEsImV4cCI6MjA5NDE1OTE1MX0.i7CmNmLnpcW7vPsi9Ie6RFHPI9V7AsmJQRXxkvHrF-4';
+var db = null;
+var allTickets = [];
+
+function initDB() {
+  try { db = window.supabase.createClient(SB_URL, SB_KEY); return true; } catch(e) { return false; }
+}
+
+function nav(id) {
+  document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+  document.getElementById('v-' + id).classList.add('active');
+  var map = {'dashboard':'n1','new-ticket':'n2','settings':'n3'};
+  if(map[id]) document.getElementById(map[id]).classList.add('active');
+  if(id === 'dashboard') loadTickets();
+  if(id === 'new-ticket') fillForm();
+  if(id === 'settings') fillSettings();
+}
+
+function fillSettings() {
+  document.getElementById('cfg-url').value = localStorage.getItem('sb_url') || '';
+  document.getElementById('cfg-key').value = localStorage.getItem('sb_key') || '';
+  document.getElementById('cfg-name').value = localStorage.getItem('eng_name') || '';
+  document.getElementById('cfg-phone').value = localStorage.getItem('eng_phone') || '';
+  document.getElementById('cfg-comp').value = localStorage.getItem('eng_comp') || '';
+}
+
+function saveSettings() {
+  var url = document.getElementById('cfg-url').value.trim();
+  var key = document.getElementById('cfg-key').value.trim();
+  var name = document.getElementById('cfg-name').value.trim();
+  var phone = document.getElementById('cfg-phone').value.trim();
+  var comp = document.getElementById('cfg-comp').value.trim();
+  if(url){ SB_URL = url; localStorage.setItem('sb_url', url); }
+  if(key){ SB_KEY = key; localStorage.setItem('sb_key', key); }
+  localStorage.setItem('eng_name', name);
+  localStorage.setItem('eng_phone', phone);
+  localStorage.setItem('eng_comp', comp);
+  initDB();
+  document.getElementById('hdr-name').textContent = name || '未设置';
+  var btn = document.getElementById('savebtn');
+  btn.textContent = '✓ 已保存！';
+  btn.style.background = '#34d399';
+  btn.style.color = '#000';
+  setTimeout(function(){ btn.textContent = '保存配置'; btn.style.background = ''; btn.style.color = ''; }, 2500);
+}
+
+function fillForm() {
+  var name = localStorage.getItem('eng_name') || '';
+  var phone = localStorage.getItem('eng_phone') || '';
+  var comp = localStorage.getItem('eng_comp') || '';
+  document.getElementById('f-en').value = name;
+  document.getElementById('f-ep').value = phone;
+  document.getElementById('f-sc').value = comp;
+  var fd = document.getElementById('f-dt');
+  if(!fd.value) fd.value = new Date().toISOString().split('T')[0];
+}
+
+function genNo() {
+  var d = new Date();
+  var ymd = String(d.getFullYear()).slice(-2) + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
+  return 'SVC-' + ymd + '-' + (Math.floor(Math.random()*9000)+1000);
+}
+
+async function submitTicket(e) {
+  e.preventDefault();
+  if(!db){ alert('数据库未连接，请先在系统设置中保存配置'); return; }
+  var types = Array.from(document.querySelectorAll('#cbtypes input:checked')).map(function(i){ return i.value; });
+  var ot = document.getElementById('f-ot').value;
+  if(types.indexOf('其他')>=0 && ot) types.push(ot);
+  var res = document.querySelector('input[name="res"]:checked');
+  var rn = document.getElementById('f-rn').value;
+  var no = genNo();
+  var token = crypto.randomUUID();
+  var row = {
+    ticket_no:no, token:token,
+    date:document.getElementById('f-dt').value,
+    customer_company:document.getElementById('f-co').value,
+    customer_contact:document.getElementById('f-ct').value,
+    customer_phone:document.getElementById('f-cp').value,
+    service_company:document.getElementById('f-sc').value,
+    engineer_name:document.getElementById('f-en').value,
+    engineer_phone:document.getElementById('f-ep').value,
+    service_types:types.join('、'),
+    problem_desc:document.getElementById('f-pb').value,
+    process_desc:document.getElementById('f-pc').value,
+    result:(res?res.value:'') + (rn?'：'+rn:''),
+    duration:document.getElementById('f-du').value,
+    status:'pending', signature:null,
+    created_at:new Date().toISOString()
+  };
+  var r = await db.from('service_tickets').insert([row]);
+  if(r.error){ alert('保存失败：'+r.error.message); return; }
+  var link = location.origin + '/sign.html?token=' + token;
+  document.getElementById('rlink').textContent = link;
+  document.getElementById('rtno').textContent = '单号：' + no;
+  document.getElementById('rmodal').classList.add('open');
+  document.getElementById('tform').reset();
+}
+
+async function loadTickets() {
+  if(!db){ renderTbl([]); return; }
+  var r = await db.from('service_tickets').select('*').order('created_at',{ascending:false});
+  if(r.error){ alert('加载失败：'+r.error.message); return; }
+  allTickets = r.data || [];
+  var now = new Date(); var m=now.getMonth(),y=now.getFullYear();
+  document.getElementById('st-all').textContent = allTickets.length;
+  document.getElementById('st-pend').textContent = allTickets.filter(function(t){return t.status==='pending';}).length;
+  document.getElementById('st-sign').textContent = allTickets.filter(function(t){return t.status==='signed';}).length;
+  document.getElementById('st-mon').textContent = allTickets.filter(function(t){ var d=new Date(t.created_at); return d.getMonth()===m&&d.getFullYear()===y; }).length;
+  renderTbl(allTickets);
+}
+
+function filterTickets(q) {
+  var f = allTickets.filter(function(t){
+    return (t.ticket_no||'').includes(q)||(t.customer_company||'').toLowerCase().includes(q.toLowerCase())||(t.customer_contact||'').includes(q);
+  });
+  renderTbl(f);
+}
+
+function renderTbl(list) {
+  var wrap = document.getElementById('tbl');
+  if(!list.length){ wrap.innerHTML='<div class="empty"><div class="ic">📋</div><p>暂无服务单</p></div>'; return; }
+  var rows = list.map(function(t){
+    var badge = t.status==='signed'?'<span class="badge bs">已签名</span>':'<span class="badge bp">待签名</span>';
+    var copyBtn = t.status==='pending' ? '<button class="btn btn-secondary btn-sm" data-link="'+location.origin+'/sign.html?token='+t.token+'" onclick="copyText(this.dataset.link)">复制链接</button>' : '';
+    var viewBtn = '<button class="btn btn-secondary btn-sm" data-token="'+t.token+'" onclick="window.open('/sign.html?token='+this.dataset.token+'&readonly=1','_blank')">查看</button>';
+    return '<tr><td><span class="tno">'+t.ticket_no+'</span></td><td>'+t.customer_company+'</td><td>'+t.customer_contact+'</td><td>'+t.date+'</td><td>'+badge+'</td><td><div class="td-act">'+copyBtn+viewBtn+'</div></td></tr>';
+  }).join('');
+  wrap.innerHTML='<table><thead><tr><th>单号</th><th>客户公司</th><th>联系人</th><th>日期</th><th>状态</th><th>操作</th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+
+function closeModal(){ document.getElementById('rmodal').classList.remove('open'); }
+
+function copyLink(){
+  var url = document.getElementById('rlink').textContent;
+  copyText(url);
+  var btn=document.getElementById('cbtn'); btn.textContent='已复制✓';
+  setTimeout(function(){ btn.textContent='复制'; },2000);
+}
+function copyText(t){
+  navigator.clipboard.writeText(t).catch(function(){
+    var el=document.createElement('textarea');el.value=t;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);
+  });
+}
+
+document.querySelectorAll('.cbi input').forEach(function(cb){
+  cb.addEventListener('change',function(){
+    this.closest('.cbi').classList.toggle('checked',this.checked);
+    document.getElementById('f-ot').style.display=document.querySelector('[value="其他"]').checked?'':'none';
+  });
+});
+
+// INIT
+initDB();
+document.getElementById('hdr-name').textContent = localStorage.getItem('eng_name') || '未设置';
+loadTickets();
+</script>
+</body>
+</html>
