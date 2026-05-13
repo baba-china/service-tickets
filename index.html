@@ -448,7 +448,7 @@ function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('view-' + id).classList.add('active');
-  const map = {'dashboard':0,'new-ticket':1,'settings':3};
+  const map = {'dashboard':0,'new-ticket':1,'settings':2};
   const items = document.querySelectorAll('.nav-item');
   if (map[id] !== undefined && items[map[id]]) items[map[id]].classList.add('active');
   if (id === 'dashboard') loadTickets();
