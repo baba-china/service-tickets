@@ -403,11 +403,6 @@ function initSupabase() {
 
 // ─── SETTINGS ─────────────────────────────────────────────
 function loadSettings() {
-  document.getElementById('cfg-url').value = localStorage.getItem('sb_url') || '';
-  document.getElementById('cfg-key').value = localStorage.getItem('sb_key') || '';
-  document.getElementById('cfg-engineer').value = localStorage.getItem('engineer_name') || '';
-  document.getElementById('cfg-engineer-phone').value = localStorage.getItem('engineer_phone') || '';
-  document.getElementById('cfg-company').value = localStorage.getItem('company_name') || '';
   updateEngineerBadge();
   prefillForm();
 }
@@ -447,12 +442,24 @@ function prefillForm() {
 function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('view-' + id).classList.add('active');
-  const map = {'dashboard':0,'new-ticket':1,'settings':2};
-  const items = document.querySelectorAll('.nav-item');
-  if (map[id] !== undefined && items[map[id]]) items[map[id]].classList.add('active');
+  var viewEl = document.getElementById('view-' + id);
+  if (viewEl) viewEl.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(n) {
+    if ((n.getAttribute('onclick') || '').indexOf("'" + id + "'") !== -1) n.classList.add('active');
+  });
   if (id === 'dashboard') loadTickets();
   if (id === 'new-ticket') prefillForm();
+  if (id === 'settings') loadSettingsForm();
+}
+function loadSettingsForm() {
+  var fields = {
+    'cfg-url': 'sb_url', 'cfg-key': 'sb_key',
+    'cfg-engineer': 'engineer_name', 'cfg-engineer-phone': 'engineer_phone', 'cfg-company': 'company_name'
+  };
+  Object.keys(fields).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = localStorage.getItem(fields[id]) || '';
+  });
 }
 
 // ─── GENERATE TICKET NO ────────────────────────────────────
