@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>技术服务单系统 · 工程师后台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222536;
+    --border: #2e3348;
+    --accent: #4f7bff;
+    --accent-soft: rgba(79,123,255,0.12);
+    --text: #e8eaf0;
+    --text-muted: #7880a0;
+    --text-dim: #4a5070;
+    --green: #34d399;
+    --green-soft: rgba(52,211,153,0.1);
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --radius: 10px;
+    --font: 'Noto Sans SC', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; font-size: 14px; line-height: 1.6; }
+
+  /* Layout */
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 32px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; letter-spacing: 0.02em; }
+  .logo-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .engineer-badge { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 14px; font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+  .engineer-badge span { color: var(--text); font-weight: 500; }
+
+  .main { flex: 1; display: flex; }
+  .sidebar { width: 220px; border-right: 1px solid var(--border); padding: 24px 0; flex-shrink: 0; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 24px; color: var(--text-muted); cursor: pointer; transition: all 0.15s; font-size: 13px; border-left: 2px solid transparent; }
+  .nav-item:hover { color: var(--text); background: var(--surface); }
+  .nav-item.active { color: var(--accent); background: var(--accent-soft); border-left-color: var(--accent); }
+  .nav-icon { font-size: 16px; width: 18px; text-align: center; }
+  .nav-label { font-weight: 500; }
+  .nav-divider { height: 1px; background: var(--border); margin: 12px 24px; }
+
+  .content { flex: 1; padding: 32px; overflow-y: auto; }
+
+  /* Views */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* Page title */
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+  .page-title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  .page-title small { display: block; font-size: 12px; font-weight: 400; color: var(--text-muted); margin-top: 2px; letter-spacing: 0; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 18px; border-radius: var(--radius); font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; text-decoration: none; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #6b8fff; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(79,123,255,0.35); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: rgba(248,113,113,0.1); color: var(--red); border: 1px solid rgba(248,113,113,0.25); }
+  .btn-danger:hover { background: rgba(248,113,113,0.2); }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  /* Stats */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .stat-value { font-size: 28px; font-weight: 700; font-family: var(--mono); }
+  .stat-value.blue { color: var(--accent); }
+  .stat-value.green { color: var(--green); }
+  .stat-value.yellow { color: var(--yellow); }
+  .stat-value.muted { color: var(--text-muted); }
+
+  /* Table */
+  .table-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .table-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); gap: 12px; }
+  .search-input { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 7px 14px; font-family: var(--font); font-size: 13px; color: var(--text); width: 240px; outline: none; transition: border-color 0.15s; }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text-dim); }
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .ticket-no { font-family: var(--mono); font-size: 12px; color: var(--accent); font-weight: 500; }
+  .status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .status-badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
+  .status-pending { background: rgba(251,191,36,0.1); color: var(--yellow); }
+  .status-pending::before { background: var(--yellow); }
+  .status-signed { background: var(--green-soft); color: var(--green); }
+  .status-signed::before { background: var(--green); }
+  .td-actions { display: flex; gap: 8px; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-state p { font-size: 13px; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; transform: translateY(10px); transition: transform 0.2s; }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 22px 28px 18px; border-bottom: 1px solid var(--border); }
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+  .modal-close:hover { color: var(--text); background: var(--surface2); }
+  .modal-body { padding: 24px 28px; }
+  .modal-footer { padding: 16px 28px 22px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border); }
+
+  /* Form */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 12px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.03em; }
+  input, textarea, select { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 13px; font-family: var(--font); font-size: 13px; color: var(--text); outline: none; transition: border-color 0.15s; width: 100%; }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  input::placeholder, textarea::placeholder { color: var(--text-dim); }
+  textarea { resize: vertical; min-height: 80px; }
+  select option { background: var(--surface); }
+  .form-section { margin-bottom: 20px; }
+  .form-section-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .checkbox-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .checkbox-item { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; transition: all 0.15s; font-size: 12px; }
+  .checkbox-item:hover { border-color: var(--accent); }
+  .checkbox-item input { width: auto; margin: 0; accent-color: var(--accent); }
+  .checkbox-item.checked { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .result-options { display: flex; flex-direction: column; gap: 6px; }
+  .radio-item { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 12px; border-radius: 8px; transition: background 0.15s; font-size: 13px; }
+  .radio-item:hover { background: var(--surface2); }
+  .radio-item input { width: auto; accent-color: var(--accent); }
+
+  /* Link copy area */
+  .link-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .link-url { flex: 1; font-family: var(--mono); font-size: 12px; color: var(--accent); word-break: break-all; }
+  .copy-btn { flex-shrink: 0; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; color: var(--text-muted); font-size: 12px; cursor: pointer; transition: all 0.15s; }
+  .copy-btn:hover { color: var(--text); border-color: var(--accent); }
+  .copy-btn.copied { color: var(--green); border-color: var(--green); }
+
+  /* Settings */
+  .settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
+  .settings-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+  .settings-note { font-size: 12px; color: var(--text-muted); margin-top: 8px; background: var(--surface2); padding: 10px 14px; border-radius: 8px; border-left: 2px solid var(--accent); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; font-size: 13px; z-index: 9999; transform: translateY(20px); opacity: 0; transition: all 0.25s; pointer-events: none; display: flex; align-items: center; gap: 10px; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: var(--green); }
+  .toast.error { border-color: var(--red); }
+  .toast-icon { font-size: 16px; }
+
+  /* Config screen */
+  .config-screen { max-width: 500px; margin: 80px auto; text-align: center; }
+  .config-screen .icon { font-size: 48px; margin-bottom: 16px; }
+  .config-screen h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .config-screen p { color: var(--text-muted); font-size: 13px; margin-bottom: 24px; line-height: 1.7; }
+  .config-form { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; text-align: left; }
+  .config-steps { list-style: none; counter-reset: step; text-align: left; margin-bottom: 24px; }
+  .config-steps li { counter-increment: step; display: flex; gap: 12px; padding: 8px 0; font-size: 13px; color: var(--text-muted); }
+  .config-steps li::before { content: counter(step); width: 22px; height: 22px; background: var(--accent-soft); color: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .config-steps li strong { color: var(--text); }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .content { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      技术服务单系统
+    </div>
+    <div class="header-right">
+      <div class="engineer-badge">工程师：<span id="header-engineer-name">未设置</span></div>
+    </div>
+  </header>
+  <div class="main">
+    <nav class="sidebar">
+      <div class="nav-item active" id="nav-dashboard" onclick="
+        document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active')});
+        document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active')});
+        document.getElementById('view-dashboard').classList.add('active');
+        document.getElementById('nav-dashboard').classList.add('active');
+        loadTickets();
+      "><span class="nav-icon">◈</span><span class="nav-label">服务单列表</span></div>
+      <div class="nav-item" id="nav-new" onclick="
+        document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active')});
+        document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active')});
+        document.getElementById('view-new-ticket').classList.add('active');
+        document.getElementById('nav-new').classList.add('active');
+        prefillForm();
+      "><span class="nav-icon">＋</span><span class="nav-label">新建服务单</span></div>
+      <div class="nav-divider"></div>
+      <div class="nav-item" id="nav-settings" onclick="
+        document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active')});
+        document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active')});
+        document.getElementById('view-settings').classList.add('active');
+        document.getElementById('nav-settings').classList.add('active');
+        loadSettingsForm();
+      "><span class="nav-icon">⚙</span><span class="nav-label">系统设置</span></div>
+    </nav>
+    <main class="content">
+
+      <!-- Dashboard -->
+      <div id="view-dashboard" class="view active">
+        <div class="page-header">
+          <div class="page-title">服务单列表<small>所有历史服务记录</small></div>
+          <button class="btn btn-primary" onclick="showView('new-ticket')">＋ 新建服务单</button>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">全部服务单</div><div class="stat-value blue" id="stat-total">—</div></div>
+          <div class="stat-card"><div class="stat-label">等待签名</div><div class="stat-value yellow" id="stat-pending">—</div></div>
+          <div class="stat-card"><div class="stat-label">已完成签名</div><div class="stat-value green" id="stat-signed">—</div></div>
+          <div class="stat-card"><div class="stat-label">本月服务</div><div class="stat-value muted" id="stat-month">—</div></div>
+        </div>
+        <div class="table-container">
+          <div class="table-toolbar">
+            <input class="search-input" type="text" placeholder="搜索客户、单号…" oninput="filterTickets(this.value)">
+            <button class="btn btn-secondary btn-sm" onclick="loadTickets()">↻ 刷新</button>
+          </div>
+          <div id="tickets-table-wrap">
+            <div class="empty-state"><div class="icon">📋</div><p>暂无服务单</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- New Ticket -->
+      <div id="view-new-ticket" class="view">
+        <div class="page-header">
+          <div class="page-title">新建服务单<small>填写服务信息后生成签名链接</small></div>
+          <button class="btn btn-secondary" onclick="showView('dashboard')">← 返回列表</button>
+        </div>
+        <div class="table-container" style="padding: 28px; max-width: 720px;">
+          <form id="ticket-form" onsubmit="submitTicket(event)">
+            <div class="form-section">
+              <div class="form-section-title">基本信息</div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>客户公司 *</label>
+                  <input type="text" id="f-company" placeholder="客户公司名称" required>
+                </div>
+                <div class="form-group">
+                  <label>联系人 *</label>
+                  <input type="text" id="f-contact" placeholder="客户联系人姓名" required>
+                </div>
+                <div class="form-group">
+                  <label>客户联系电话</label>
+                  <input type="text" id="f-contact-phone" placeholder="客户手机/座机">
+                </div>
+                <div class="form-group">
+                  <label>服务日期 *</label>
+                  <input type="date" id="f-date" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <div class="form-section-title">服务方信息</div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>服务方名称</label>
+                  <input type="text" id="f-company-name" placeholder="本公司名称">
+                </div>
+                <div class="form-group">
+                  <label>技术工程师</label>
+                  <input type="text" id="f-engineer" placeholder="工程师姓名">
+                </div>
+                <div class="form-group">
+                  <label>工程师联系电话</label>
+                  <input type="text" id="f-engineer-phone" placeholder="工程师手机">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <div class="form-section-title">服务内容</div>
+              <div class="form-grid">
+                <div class="form-group full">
+                  <label>服务类型（可多选）</label>
+                  <div class="checkbox-group" id="service-types">
+                    <label class="checkbox-item"><input type="checkbox" value="故障排查与修复"> 故障排查与修复</label>
+                    <label class="checkbox-item"><input type="checkbox" value="软件安装/升级"> 软件安装/升级</label>
+                    <label class="checkbox-item"><input type="checkbox" value="远程配置"> 远程配置</label>
+                    <label class="checkbox-item"><input type="checkbox" value="技术咨询"> 技术咨询</label>
+                    <label class="checkbox-item"><input type="checkbox" value="其他"> 其他</label>
+                  </div>
+                  <input type="text" id="f-service-other" placeholder="其他类型请填写…" style="margin-top:8px; display:none;">
+                </div>
+                <div class="form-group full">
+                  <label>问题描述 *</label>
+                  <textarea id="f-problem" placeholder="客户反馈的问题或故障现象" rows="3" required></textarea>
+                </div>
+                <div class="form-group full">
+                  <label>处理过程</label>
+                  <textarea id="f-process" placeholder="简述关键操作：查日志、清缓存、改配置、重装软件、调试设备等" rows="3"></textarea>
+                </div>
+                <div class="form-group full">
+                  <label>处理结果 *</label>
+                  <div class="result-options">
+                    <label class="radio-item"><input type="radio" name="result" value="已解决，系统/软件恢复正常" required> 已解决，系统/软件恢复正常</label>
+                    <label class="radio-item"><input type="radio" name="result" value="部分解决，存在遗留问题待后续处理"> 部分解决，存在遗留问题待后续处理</label>
+                    <label class="radio-item"><input type="radio" name="result" value="未解决"> 未解决</label>
+                  </div>
+                  <input type="text" id="f-result-note" placeholder="补充说明（未解决原因及建议）" style="margin-top:8px;">
+                </div>
+                <div class="form-group">
+                  <label>服务时长</label>
+                  <input type="text" id="f-duration" placeholder="例如：1.5小时">
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:10px;">
+              <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center;">生成服务单 & 签名链接 →</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div id="view-settings" class="view">
+        <div class="page-header">
+          <div class="page-title">系统设置<small>配置 Supabase 连接和个人信息</small></div>
+        </div>
+        <div class="settings-card">
+          <div class="settings-title">🔗 Supabase 数据库配置</div>
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>Supabase Project URL</label>
+              <input type="text" id="cfg-url" placeholder="https://xxxxxxxxxxxx.supabase.co">
+            </div>
+            <div class="form-group full">
+              <label>Supabase Anon Key</label>
+              <input type="text" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+            </div>
+          </div>
+          <div class="settings-note">
+            📌 在 Supabase 后台 → Settings → API 中可找到以上两个值，粘贴到这里后点击保存即可。
+          </div>
+        </div>
+        <div class="settings-card">
+          <div class="settings-title">👤 工程师信息（预填到新服务单）</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>工程师姓名</label>
+              <input type="text" id="cfg-engineer" placeholder="您的姓名">
+            </div>
+            <div class="form-group">
+              <label>工程师电话</label>
+              <input type="text" id="cfg-engineer-phone" placeholder="您的联系电话">
+            </div>
+            <div class="form-group">
+              <label>服务方公司名称</label>
+              <input type="text" id="cfg-company" placeholder="您所在公司名称">
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="saveSettings()">保存配置</button>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Result Modal -->
+<div id="result-modal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✅ 服务单创建成功</div>
+      <button class="modal-close" onclick="closeModal('result-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text-muted); font-size:13px; margin-bottom:16px;">服务单已保存，将以下链接发送给客户，客户打开后即可查看服务内容并完成签名。</p>
+      <label style="font-size:12px; color:var(--text-muted); font-weight:600; letter-spacing:0.05em; text-transform:uppercase;">客户签名链接</label>
+      <div class="link-box">
+        <div class="link-url" id="result-link"></div>
+        <button class="copy-btn" id="copy-btn" onclick="copyLink()">复制</button>
+      </div>
+      <div id="result-ticket-no" style="margin-top:12px; font-size:12px; color:var(--text-muted);"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('result-modal'); showView('dashboard')">返回列表</button>
+      <button class="btn btn-primary" onclick="copyLink()">复制链接</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"><span class="toast-icon" id="toast-icon"></span><span id="toast-msg"></span></div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────
+let SUPABASE_URL = localStorage.getItem('sb_url') || 'https://ttkpvjecqobdqiswptdq.supabase.co';
+let SUPABASE_KEY = localStorage.getItem('sb_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0a3B2amVjcW9iZHFpc3dwdGRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1ODMxNTEsImV4cCI6MjA5NDE1OTE1MX0.i7CmNmLnpcW7vPsi9Ie6RFHPI9V7AsmJQRXxkvHrF-4';
+let supabase = null;
+let allTickets = [];
+
+function initSupabase() {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return false;
+  try {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    return true;
+  } catch(e) { return false; }
+}
+
+// ─── SETTINGS ─────────────────────────────────────────────
+function loadSettings() {
+  updateEngineerBadge();
+  prefillForm();
+}
+function saveSettings() {
+  var url = document.getElementById('cfg-url').value.trim();
+  var key = document.getElementById('cfg-key').value.trim();
+  var ename = document.getElementById('cfg-engineer').value.trim();
+  var ephone = document.getElementById('cfg-engineer-phone').value.trim();
+  var cname = document.getElementById('cfg-company').value.trim();
+  if (url) { SUPABASE_URL = url; localStorage.setItem('sb_url', url); }
+  if (key) { SUPABASE_KEY = key; localStorage.setItem('sb_key', key); }
+  localStorage.setItem('engineer_name', ename);
+  localStorage.setItem('engineer_phone', ephone);
+  localStorage.setItem('company_name', cname);
+  initSupabase();
+  updateEngineerBadge();
+  // show success visually
+  var btn = document.querySelector('[onclick="saveSettings()"]');
+  if (btn) { var orig = btn.textContent; btn.textContent = '✓ 已保存！'; btn.style.background='#34d399'; setTimeout(function(){ btn.textContent=orig; btn.style.background=''; }, 2000); }
+  alert('设置已保存！工程师：' + (ename||'未填') + '，公司：' + (cname||'未填'));
+}
+function updateEngineerBadge() {
+  const name = localStorage.getItem('engineer_name') || '未设置';
+  document.getElementById('header-engineer-name').textContent = name;
+}
+function prefillForm() {
+  var e = localStorage.getItem('engineer_name') || '';
+  var p = localStorage.getItem('engineer_phone') || '';
+  var c = localStorage.getItem('company_name') || '';
+  var fe = document.getElementById('f-engineer');
+  var fp = document.getElementById('f-engineer-phone');
+  var fc = document.getElementById('f-company-name');
+  var fd = document.getElementById('f-date');
+  if (fe) fe.value = e;
+  if (fp) fp.value = p;
+  if (fc) fc.value = c;
+  if (fd && !fd.value) fd.value = new Date().toISOString().split('T')[0];
+}
+
+// ─── VIEW ROUTING ──────────────────────────────────────────
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  var viewEl = document.getElementById('view-' + id);
+  if (viewEl) viewEl.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(n) {
+    if ((n.getAttribute('onclick') || '').indexOf("'" + id + "'") !== -1) n.classList.add('active');
+  });
+  if (id === 'dashboard') loadTickets();
+  if (id === 'new-ticket') prefillForm();
+  if (id === 'settings') loadSettingsForm();
+}
+function loadSettingsForm() {
+  var fields = {
+    'cfg-url': 'sb_url', 'cfg-key': 'sb_key',
+    'cfg-engineer': 'engineer_name', 'cfg-engineer-phone': 'engineer_phone', 'cfg-company': 'company_name'
+  };
+  Object.keys(fields).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.value = localStorage.getItem(fields[id]) || '';
+  });
+}
+
+// ─── GENERATE TICKET NO ────────────────────────────────────
+function genTicketNo() {
+  const d = new Date();
+  const ymd = d.getFullYear().toString().slice(-2)
+    + String(d.getMonth()+1).padStart(2,'0')
+    + String(d.getDate()).padStart(2,'0');
+  const rnd = Math.floor(Math.random()*9000)+1000;
+  return 'SVC-' + ymd + '-' + rnd;
+}
+
+// ─── SUBMIT NEW TICKET ─────────────────────────────────────
+async function submitTicket(e) {
+  e.preventDefault();
+  if (!supabase) { toast('请先在「系统设置」中配置 Supabase 连接', 'error'); return; }
+  const types = Array.from(document.querySelectorAll('#service-types input:checked')).map(i => i.value);
+  const otherType = document.getElementById('f-service-other').value;
+  if (types.includes('其他') && otherType) types.push(otherType);
+  const result = document.querySelector('input[name="result"]:checked')?.value || '';
+  const resultNote = document.getElementById('f-result-note').value;
+  const ticketNo = genTicketNo();
+  const token = crypto.randomUUID();
+  const data = {
+    ticket_no: ticketNo,
+    token: token,
+    date: document.getElementById('f-date').value,
+    customer_company: document.getElementById('f-company').value,
+    customer_contact: document.getElementById('f-contact').value,
+    customer_phone: document.getElementById('f-contact-phone').value,
+    service_company: document.getElementById('f-company-name').value,
+    engineer_name: document.getElementById('f-engineer').value,
+    engineer_phone: document.getElementById('f-engineer-phone').value,
+    service_types: types.join('、'),
+    problem_desc: document.getElementById('f-problem').value,
+    process_desc: document.getElementById('f-process').value,
+    result: result + (resultNote ? '：' + resultNote : ''),
+    duration: document.getElementById('f-duration').value,
+    status: 'pending',
+    signature: null,
+    created_at: new Date().toISOString()
+  };
+  const { error } = await supabase.from('service_tickets').insert([data]);
+  if (error) { toast('保存失败：' + error.message, 'error'); return; }
+  const signUrl = window.location.origin + '/sign.html?token=' + token;
+  document.getElementById('result-link').textContent = signUrl;
+  document.getElementById('result-ticket-no').textContent = '单号：' + ticketNo;
+  document.getElementById('ticket-form').reset();
+  openModal('result-modal');
+}
+
+// ─── LOAD TICKETS ──────────────────────────────────────────
+async function loadTickets() {
+  if (!supabase) { renderTable([]); return; }
+  const { data, error } = await supabase.from('service_tickets').select('*').order('created_at', {ascending:false});
+  if (error) { toast('加载失败：' + error.message, 'error'); return; }
+  allTickets = data || [];
+  renderStats(allTickets);
+  renderTable(allTickets);
+}
+function filterTickets(q) {
+  const filtered = allTickets.filter(t =>
+    t.ticket_no?.includes(q) || t.customer_company?.toLowerCase().includes(q.toLowerCase()) || t.customer_contact?.includes(q)
+  );
+  renderTable(filtered);
+}
+function renderStats(tickets) {
+  document.getElementById('stat-total').textContent = tickets.length;
+  document.getElementById('stat-pending').textContent = tickets.filter(t => t.status === 'pending').length;
+  document.getElementById('stat-signed').textContent = tickets.filter(t => t.status === 'signed').length;
+  const now = new Date(); const m = now.getMonth(), y = now.getFullYear();
+  document.getElementById('stat-month').textContent = tickets.filter(t => { const d = new Date(t.created_at); return d.getMonth()===m && d.getFullYear()===y; }).length;
+}
+function renderTable(tickets) {
+  const wrap = document.getElementById('tickets-table-wrap');
+  if (!tickets.length) { wrap.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>暂无服务单，点击「新建服务单」开始</p></div>'; return; }
+  const rows = tickets.map(t => {
+    const badge = t.status === 'signed'
+      ? '<span class="status-badge status-signed">已签名</span>'
+      : '<span class="status-badge status-pending">待签名</span>';
+    const signUrl = window.location.origin + '/sign.html?token=' + t.token;
+    return `<tr>
+      <td><span class="ticket-no">${t.ticket_no}</span></td>
+      <td>${t.customer_company}</td>
+      <td>${t.customer_contact}</td>
+      <td>${t.date}</td>
+      <td>${badge}</td>
+      <td>
+        <div class="td-actions">
+          ${t.status==='pending' ? `<button class="btn btn-secondary btn-sm" onclick="copyText('${signUrl}')">复制链接</button>` : ''}
+          <button class="btn btn-secondary btn-sm" onclick="viewTicket('${t.token}')">查看</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table><thead><tr><th>单号</th><th>客户公司</th><th>联系人</th><th>日期</th><th>状态</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function viewTicket(token) {
+  window.open('/sign.html?token=' + token + '&readonly=1', '_blank');
+}
+
+// ─── MODAL ─────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ─── COPY ──────────────────────────────────────────────────
+function copyLink() {
+  const url = document.getElementById('result-link').textContent;
+  copyText(url);
+  const btn = document.getElementById('copy-btn');
+  btn.textContent = '已复制 ✓'; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 2000);
+}
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => toast('链接已复制到剪贴板', 'success')).catch(() => {
+    const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); toast('链接已复制', 'success');
+  });
+}
+
+// ─── TOAST ─────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type='') {
+  const el = document.getElementById('toast'); const icon = document.getElementById('toast-icon'); const msgEl = document.getElementById('toast-msg');
+  icon.textContent = type==='success' ? '✓' : type==='error' ? '✕' : 'ℹ';
+  msgEl.textContent = msg;
+  el.className = 'toast show ' + (type||'');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ─── SERVICE TYPE CHECKBOX ─────────────────────────────────
+document.querySelectorAll('.checkbox-item input').forEach(cb => {
+  cb.addEventListener('change', function() {
+    this.closest('.checkbox-item').classList.toggle('checked', this.checked);
+    document.getElementById('f-service-other').style.display = document.querySelector('[value="其他"]').checked ? '' : 'none';
+  });
+});
+
+// ─── INIT ──────────────────────────────────────────────────
+initSupabase();
+loadSettings();
+loadTickets();
+</script>
+</body>
+</html>
